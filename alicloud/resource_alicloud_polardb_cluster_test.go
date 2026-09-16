@@ -49,6 +49,46 @@ func TestUnitPolarDBDistributedNodeSchema(t *testing.T) {
 	}
 }
 
+func TestUnitBuildPolarDBCreateRequestPostgreSQL15AgileServerless(t *testing.T) {
+	d := schema.TestResourceDataRaw(t, resourceAlicloudPolarDBCluster().Schema, map[string]interface{}{
+		"db_type":             "PostgreSQL",
+		"db_version":          "15",
+		"db_node_class":       "polar.pg.sl.small",
+		"pay_type":            "PostPaid",
+		"storage_type":        "PSL5",
+		"serverless_type":     "AgileServerless",
+		"scale_min":           1,
+		"scale_max":           8,
+		"scale_ro_num_min":    0,
+		"scale_ro_num_max":    0,
+		"allow_shut_down":     "false",
+		"hot_standby_cluster": "OFF",
+		"vpc_id":              "vpc-test",
+		"vswitch_id":          "vsw-test",
+		"zone_id":             "cn-hangzhou-h",
+	})
+	client := &connectivity.AliyunClient{RegionId: "cn-hangzhou"}
+
+	request, err := buildPolarDBCreateRequest(d, client)
+	if err != nil {
+		t.Fatalf("buildPolarDBCreateRequest returned an error: %v", err)
+	}
+
+	want := map[string]string{
+		"ServerlessType": "AgileServerless",
+		"ScaleMin":       "1",
+		"ScaleMax":       "8",
+		"ScaleRoNumMin":  "0",
+		"ScaleRoNumMax":  "0",
+		"AllowShutDown":  "false",
+	}
+	for key, expected := range want {
+		if actual := fmt.Sprint(request[key]); actual != expected {
+			t.Errorf("CreateDBCluster %s = %q, want %q", key, actual, expected)
+		}
+	}
+}
+
 func TestUnitClassifyPolarDBDistributedNode(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -17,6 +17,7 @@ ENHANCEMENTS:
 
 BUG FIXES:
 
+- resource/alicloud_polardb_cluster: preserve PostgreSQL 15 AgileServerless scale bounds in CreateDBCluster requests. ([#10568](https://github.com/aliyun/terraform-provider-alicloud/issues/10568))
 - resource/alicloud_alikafka_sasl_user: Fixed the error of resource not found during creation; resource/alicloud_alikafka_sasl_acl: Fixed the error of resource not found during creation. ([#10362](https://github.com/aliyun/terraform-provider-alicloud/issues/10362))
 - resource/alicloud_alb_server_group: Fixed health_check_template_id invalid error. ([#10432](https://github.com/aliyun/terraform-provider-alicloud/issues/10432))
 - resource/alicloud_nlb_listener: reject empty strings in certificate_ids and ca_certificate_ids. ([#10473](https://github.com/aliyun/terraform-provider-alicloud/issues/10473))

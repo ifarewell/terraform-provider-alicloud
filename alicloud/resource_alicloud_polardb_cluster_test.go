@@ -1904,6 +1904,46 @@ func TestAccAliCloudPolarDBCluster_SteadyServerless(t *testing.T) {
 	})
 }
 
+func TestUnitAliCloudPolarDBClusterCreateRequestPostgreSQL15AgileServerless(t *testing.T) {
+	clusterResource := resourceAlicloudPolarDBCluster()
+	config := terraform.NewResourceConfigRaw(map[string]interface{}{
+		"db_type":          "PostgreSQL",
+		"db_version":       "15",
+		"db_node_class":    "polar.pg.x4.medium",
+		"serverless_type":  "AgileServerless",
+		"scale_min":        1,
+		"scale_max":        8,
+		"scale_ro_num_min": 0,
+		"scale_ro_num_max": 0,
+	})
+
+	diff, err := schema.InternalMap(clusterResource.Schema).Diff(nil, config, clusterResource.CustomizeDiff, nil, false)
+	if err != nil {
+		t.Fatalf("build resource diff: %v", err)
+	}
+	d, err := schema.InternalMap(clusterResource.Schema).Data(nil, diff)
+	if err != nil {
+		t.Fatalf("build resource data: %v", err)
+	}
+
+	request, err := buildPolarDBCreateRequest(d, &connectivity.AliyunClient{RegionId: "cn-test"})
+	if err != nil {
+		t.Fatalf("build CreateDBCluster request: %v", err)
+	}
+
+	want := map[string]interface{}{
+		"ScaleMin":      "1",
+		"ScaleMax":      "8",
+		"ScaleRoNumMin": 0,
+		"ScaleRoNumMax": 0,
+	}
+	for key, expected := range want {
+		if actual, ok := request[key]; !ok || actual != expected {
+			t.Errorf("CreateDBCluster request %s = %#v, want %#v", key, actual, expected)
+		}
+	}
+}
+
 func TestAccAliCloudPolarDBCluster_CreateDBCluster(t *testing.T) {
 	var v *polardb.DescribeDBClusterAttributeResponse
 	name := "tf-testAccPolarDBClusterCreateNormal"

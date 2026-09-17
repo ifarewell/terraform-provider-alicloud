@@ -107,6 +107,46 @@ func testSweepPolarDBClusters(region string) error {
 	return nil
 }
 
+func TestUnitPolarDBClusterPostgreSQL15AgileServerlessCreateRequest(t *testing.T) {
+	clusterResource := resourceAlicloudPolarDBCluster()
+	config := terraform.NewResourceConfigRaw(map[string]interface{}{
+		"db_type":          "PostgreSQL",
+		"db_version":       "15",
+		"db_node_class":    "polar.pg.x4.medium",
+		"serverless_type":  "AgileServerless",
+		"scale_min":        1,
+		"scale_max":        8,
+		"scale_ro_num_min": 0,
+		"scale_ro_num_max": 0,
+		"allow_shut_down":  "false",
+	})
+	diff, err := clusterResource.Diff(nil, config, nil)
+	if err != nil {
+		t.Fatalf("build resource diff: %s", err)
+	}
+	d, err := schema.InternalMap(clusterResource.Schema).Data(nil, diff)
+	if err != nil {
+		t.Fatalf("build resource data: %s", err)
+	}
+	request, err := buildPolarDBCreateRequest(d, &connectivity.AliyunClient{RegionId: "cn-test"})
+	if err != nil {
+		t.Fatalf("build CreateDBCluster request: %s", err)
+	}
+
+	want := map[string]interface{}{
+		"ScaleMin":      "1",
+		"ScaleMax":      "8",
+		"ScaleRoNumMin": 0,
+		"ScaleRoNumMax": 0,
+		"AllowShutDown": "false",
+	}
+	for key, wantValue := range want {
+		if got, ok := request[key]; !ok || fmt.Sprint(got) != fmt.Sprint(wantValue) {
+			t.Errorf("CreateDBCluster request[%q] = %#v, want %#v", key, got, wantValue)
+		}
+	}
+}
+
 func TestAccAliCloudPolarDBCluster_Update(t *testing.T) {
 	var v *polardb.DescribeDBClusterAttributeResponse
 	var ips []map[string]interface{}

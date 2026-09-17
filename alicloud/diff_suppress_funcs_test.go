@@ -2308,6 +2308,23 @@ func TestUnitCommonPolardbServrelessTypeDiffSuppressFunc(t *testing.T) {
 			description:    "PostgreSQL 14 with AgileServerless should not suppress diff",
 		},
 		{
+			name:           "PostgreSQL_15_AgileServerless",
+			dbType:         "PostgreSQL",
+			dbVersion:      "15",
+			serverlessType: "AgileServerless",
+			expected:       false,
+			description:    "PostgreSQL 15 with AgileServerless should not suppress diff",
+		},
+		{
+			name:                   "PostgreSQL_15_SteadyServerless_ON",
+			dbType:                 "PostgreSQL",
+			dbVersion:              "15",
+			serverlessType:         "SteadyServerless",
+			serverlessSteadySwitch: "ON",
+			expected:               true,
+			description:            "PostgreSQL 15 with SteadyServerless should remain unsupported",
+		},
+		{
 			name:           "Oracle_14_AgileServerless",
 			dbType:         "Oracle",
 			dbVersion:      "14",

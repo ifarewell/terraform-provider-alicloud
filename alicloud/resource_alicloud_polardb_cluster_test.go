@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,58 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
+
+func TestUnitAlicloudPolarDBClusterPostgreSQL15ServerlessCreateRequest(t *testing.T) {
+	clusterResource := resourceAlicloudPolarDBCluster()
+	config := terraform.NewResourceConfigRaw(map[string]interface{}{
+		"db_type":          "PostgreSQL",
+		"db_version":       "15",
+		"db_node_class":    "polar.pg.sl.small",
+		"zone_id":          "cn-test-a",
+		"vpc_id":           "vpc-test",
+		"vswitch_id":       "vsw-test",
+		"serverless_type":  "AgileServerless",
+		"scale_min":        1,
+		"scale_max":        8,
+		"scale_ro_num_min": 0,
+		"scale_ro_num_max": 0,
+		"allow_shut_down":  "false",
+	})
+
+	diff, err := clusterResource.Diff(nil, config, nil)
+	if err != nil {
+		t.Fatalf("diff PostgreSQL 15 AgileServerless config: %s", err)
+	}
+	for _, key := range []string{"scale_min", "scale_max", "scale_ro_num_min", "scale_ro_num_max"} {
+		if _, ok := diff.Attributes[key]; !ok {
+			t.Errorf("expected %s in planned diff, got %#v", key, diff.Attributes)
+		}
+	}
+
+	d, err := schema.InternalMap(clusterResource.Schema).Data(nil, diff)
+	if err != nil {
+		t.Fatalf("build resource data from diff: %s", err)
+	}
+	request, err := buildPolarDBCreateRequest(d, &connectivity.AliyunClient{RegionId: "cn-test"})
+	if err != nil {
+		t.Fatalf("build CreateDBCluster request: %s", err)
+	}
+	want := map[string]interface{}{
+		"ScaleMin":      "1",
+		"ScaleMax":      "8",
+		"ScaleRoNumMin": 0,
+		"ScaleRoNumMax": 0,
+		"AllowShutDown": "false",
+	}
+	for key, expected := range want {
+		if actual, ok := request[key]; !ok || !reflect.DeepEqual(actual, expected) {
+			t.Errorf("CreateDBCluster request %s = %#v, want %#v", key, actual, expected)
+		}
+	}
+	if _, ok := request["SecondsUntilAutoPause"]; ok {
+		t.Error("CreateDBCluster request must omit SecondsUntilAutoPause for PostgreSQL Serverless")
+	}
+}
 
 var clusterConnectionStringRegexp = "^[a-z-A-Z-0-9]+.rwlb.([a-z-A-Z-0-9]+.){0,1}rds.aliyuncs.com"
 

@@ -17,10 +17,11 @@ import (
 
 func resourceAlicloudPolarDBCluster() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceAlicloudPolarDBClusterCreate,
-		Read:   resourceAlicloudPolarDBClusterRead,
-		Update: resourceAlicloudPolarDBClusterUpdate,
-		Delete: resourceAlicloudPolarDBClusterDelete,
+		Create:        resourceAlicloudPolarDBClusterCreate,
+		Read:          resourceAlicloudPolarDBClusterRead,
+		Update:        resourceAlicloudPolarDBClusterUpdate,
+		Delete:        resourceAlicloudPolarDBClusterDelete,
+		CustomizeDiff: resourceAlicloudPolarDBClusterCustomizeDiff,
 		Importer: &schema.ResourceImporter{
 			State: schema.ImportStatePassthrough,
 		},
@@ -566,6 +567,16 @@ func resourceAlicloudPolarDBCluster() *schema.Resource {
 			},
 		},
 	}
+}
+
+func resourceAlicloudPolarDBClusterCustomizeDiff(diff *schema.ResourceDiff, meta interface{}) error {
+	if (diff.Id() == "" || diff.HasChange("db_type") || diff.HasChange("db_version") || diff.HasChange("serverless_type")) &&
+		diff.Get("db_type").(string) == "PostgreSQL" &&
+		diff.Get("serverless_type").(string) == "AgileServerless" &&
+		diff.Get("db_version").(string) != "14" {
+		return fmt.Errorf("serverless_type AgileServerless is only supported for PostgreSQL 14")
+	}
+	return nil
 }
 
 func resourceAlicloudPolarDBClusterCreate(d *schema.ResourceData, meta interface{}) error {

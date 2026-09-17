@@ -2019,6 +2019,38 @@ func TestAccAliCloudPolarDBCluster_CreateDBCluster(t *testing.T) {
 	})
 }
 
+func TestUnitAliCloudPolarDBClusterCreateRequestPostgreSQL15ServerlessScale(t *testing.T) {
+	d := schema.TestResourceDataRaw(t, resourceAlicloudPolarDBCluster().Schema, map[string]interface{}{
+		"db_type":          "PostgreSQL",
+		"db_version":       "15",
+		"db_node_class":    "polar.pg.x4.medium",
+		"serverless_type":  "AgileServerless",
+		"scale_min":        1,
+		"scale_max":        8,
+		"scale_ro_num_min": 0,
+		"scale_ro_num_max": 0,
+	})
+	client := &connectivity.AliyunClient{RegionId: "cn-hangzhou"}
+
+	request, err := buildPolarDBCreateRequest(d, client)
+	if err != nil {
+		t.Fatalf("buildPolarDBCreateRequest returned an error: %v", err)
+	}
+
+	expected := map[string]interface{}{
+		"ServerlessType": "AgileServerless",
+		"ScaleMin":       "1",
+		"ScaleMax":       "8",
+		"ScaleRoNumMin":  0,
+		"ScaleRoNumMax":  0,
+	}
+	for key, value := range expected {
+		if got, ok := request[key]; !ok || got != value {
+			t.Errorf("request[%q] = %#v, want %#v", key, got, value)
+		}
+	}
+}
+
 func TestAccAliCloudPolarDBCluster_EnableDynamoDB(t *testing.T) {
 	var v *polardb.DescribeDBClusterAttributeResponse
 	name := "tf-testAccPolarDBClusterEnableDynamoDB"

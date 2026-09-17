@@ -26,6 +26,141 @@ func init() {
 	})
 }
 
+func TestUnitAliCloudPolarDBClusterServerlessCompatibility(t *testing.T) {
+	testCases := []struct {
+		name           string
+		dbType         string
+		dbVersion      string
+		serverlessType string
+		existing       bool
+		stateDBVersion string
+		wantError      bool
+	}{
+		{
+			name:           "PostgreSQL_15_AgileServerless",
+			dbType:         "PostgreSQL",
+			dbVersion:      "15",
+			serverlessType: "AgileServerless",
+			wantError:      true,
+		},
+		{
+			name:           "Existing_PostgreSQL_15_AgileServerless",
+			dbType:         "PostgreSQL",
+			dbVersion:      "15",
+			serverlessType: "AgileServerless",
+			existing:       true,
+		},
+		{
+			name:           "Replace_PostgreSQL_14_With_15_AgileServerless",
+			dbType:         "PostgreSQL",
+			dbVersion:      "15",
+			serverlessType: "AgileServerless",
+			existing:       true,
+			stateDBVersion: "14",
+			wantError:      true,
+		},
+		{
+			name:           "PostgreSQL_14_AgileServerless",
+			dbType:         "PostgreSQL",
+			dbVersion:      "14",
+			serverlessType: "AgileServerless",
+		},
+		{
+			name:      "PostgreSQL_15_FixedSpecification",
+			dbType:    "PostgreSQL",
+			dbVersion: "15",
+		},
+		{
+			name:           "PostgreSQL_15_SteadyServerless",
+			dbType:         "PostgreSQL",
+			dbVersion:      "15",
+			serverlessType: "SteadyServerless",
+		},
+		{
+			name:           "MySQL_8_AgileServerless",
+			dbType:         "MySQL",
+			dbVersion:      "8.0",
+			serverlessType: "AgileServerless",
+		},
+		{
+			name:           "Oracle_14_AgileServerless",
+			dbType:         "Oracle",
+			dbVersion:      "14",
+			serverlessType: "AgileServerless",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			config := map[string]interface{}{
+				"db_type":       testCase.dbType,
+				"db_version":    testCase.dbVersion,
+				"db_node_class": "test.node.class",
+			}
+			if testCase.serverlessType != "" {
+				config["serverless_type"] = testCase.serverlessType
+			}
+
+			var state *terraform.InstanceState
+			if testCase.existing {
+				stateDBVersion := testCase.stateDBVersion
+				if stateDBVersion == "" {
+					stateDBVersion = testCase.dbVersion
+				}
+				state = &terraform.InstanceState{ID: "pc-test", Attributes: map[string]string{
+					"db_type":         testCase.dbType,
+					"db_version":      stateDBVersion,
+					"db_node_class":   "test.node.class",
+					"serverless_type": testCase.serverlessType,
+				}}
+			}
+
+			_, err := resourceAlicloudPolarDBCluster().Diff(state, terraform.NewResourceConfigRaw(config), nil)
+			if testCase.wantError {
+				if err == nil || !strings.Contains(err.Error(), "PostgreSQL 14") {
+					t.Fatalf("expected PostgreSQL 14 compatibility error, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected compatibility error: %v", err)
+			}
+		})
+	}
+}
+
+func TestUnitAliCloudPolarDBClusterPostgreSQL14ServerlessCreateRequest(t *testing.T) {
+	resourceSchema := resourceAlicloudPolarDBCluster().Schema
+	d := schema.TestResourceDataRaw(t, resourceSchema, map[string]interface{}{
+		"db_type":          "PostgreSQL",
+		"db_version":       "14",
+		"db_node_class":    "polar.pg.x4.medium",
+		"serverless_type":  "AgileServerless",
+		"scale_min":        1,
+		"scale_max":        8,
+		"scale_ro_num_min": 0,
+		"scale_ro_num_max": 0,
+	})
+
+	request, err := buildPolarDBCreateRequest(d, &connectivity.AliyunClient{RegionId: "cn-test"})
+	if err != nil {
+		t.Fatalf("unexpected request construction error: %v", err)
+	}
+
+	want := map[string]interface{}{
+		"ServerlessType": "AgileServerless",
+		"ScaleMin":       "1",
+		"ScaleMax":       "8",
+		"ScaleRoNumMin":  0,
+		"ScaleRoNumMax":  0,
+	}
+	for key, wantValue := range want {
+		if got := request[key]; got != wantValue {
+			t.Errorf("request[%q] = %#v, want %#v", key, got, wantValue)
+		}
+	}
+}
+
 func testSweepPolarDBClusters(region string) error {
 	rawClient, err := sharedClientForRegion(region)
 	if err != nil {
